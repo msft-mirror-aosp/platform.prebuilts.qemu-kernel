@@ -234,6 +234,7 @@ fi
 
 if [ -n "$OPTION_CROSS" ] ; then
     CROSSPREFIX="$OPTION_CROSS"
+    CROSSTOOLCHAIN=${CROSSPREFIX}$GCC_VERSION
 else
     case $ARCH in
         arm)
@@ -303,6 +304,9 @@ if [ $? != 0 ] ; then
             ;;
         arm64)
             PREBUILT_ARCH=aarch64
+            ;;
+        mips64)
+            PREBUILT_ARCH=mips
             ;;
         *)
             PREBUILT_ARCH=$ARCH
