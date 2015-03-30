@@ -168,6 +168,9 @@ else
         # There is no GCC 4.7 toolchain to build AARCH64 binaries.
         GCC_VERSION=4.8
     fi
+    if [ "$ARCH" = "mips64" ]; then
+        GCC_VERSION=4.9
+    fi
     echo "Autoconfig: --gcc-version=$GCC_VERSION"
 fi
 
@@ -357,6 +360,7 @@ case $CONFIG in
         ;;
 esac
 
+ORG_ARCH=$ARCH
 case $ARCH in
     mips64)
         # MIPS64 Kernel code base is under arch/mips
@@ -419,7 +423,7 @@ cp COPYING $OUTPUT/LINUX_KERNEL_COPYING
 
 cat > $OUTPUT/README <<EOF
 This directory contains kernel images to be used with the Android emulator
-program, for the $ARCH CPU architecture. It was built with the $PROGNAME
+program, for the $ORG_ARCH CPU architecture. It was built with the $PROGNAME
 script. For more details, read:
 
   \$AOSP/external/qemu/docs/ANDROID-KERNEL.TXT
