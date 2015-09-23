@@ -14,7 +14,7 @@ VARIANT=goldfish
 OUTPUT=/tmp/kernel-qemu
 CROSSPREFIX=arm-linux-androideabi-
 CONFIG=goldfish
-GCC_VERSION=4.8
+GCC_VERSION=4.9
 
 VALID_ARCHS="arm x86 x86_64 mips arm64 mips64"
 
