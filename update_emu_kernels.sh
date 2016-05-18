@@ -1,10 +1,12 @@
 #!/bin/bash
 set -e
 
-if [ $# == 2 ] && [ $1 == '-m' ]
+manual_mode=false
+
+if [ $# == 1 ] && [ $1 == '-m' ]
 then
 	manual_mode=true
-elif [ $# != 1 ]
+elif [ $# != 0 ]
 then
 	echo  Usage: $0 [-m]
 	echo "   -m: manually specify build numbers"
@@ -21,8 +23,7 @@ declare -A kernel_img
 kernel_img[3.4-arm]="zImage arm/kernel-qemu-armv7"
 kernel_img[3.4-mips]="vmlinux mips/kernel-qemu"
 kernel_img[3.4-x86]="bzImage x86/kernel-qemu"
-# arm ranchu emulator not ready
-# kernel_img[3.10-arm]="Image arm/ranchu/kernel-qemu"
+kernel_img[3.10-arm]="zImage arm/ranchu/kernel-qemu"
 kernel_img[3.10-arm64]="Image arm64/kernel-qemu"
 kernel_img[3.10-mips]="vmlinux mips/ranchu/kernel-qemu"
 kernel_img[3.10-mips64]="vmlinux mips64/kernel-qemu"
