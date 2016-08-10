@@ -21,15 +21,15 @@ branch_prefix='kernel-n-dev-android-goldfish-'
 declare -A kernel_img
 
 kernel_img[3.4-arm]="zImage arm/kernel-qemu-armv7"
-kernel_img[3.4-mips]="vmlinux mips/kernel-qemu"
 kernel_img[3.4-x86]="bzImage x86/kernel-qemu"
 kernel_img[3.10-arm]="zImage arm/ranchu/kernel-qemu"
 kernel_img[3.10-arm64]="Image arm64/kernel-qemu"
-kernel_img[3.10-mips]="vmlinux mips/ranchu/kernel-qemu"
-kernel_img[3.10-mips64]="vmlinux mips64/kernel-qemu"
 kernel_img[3.10-x86]="bzImage x86/ranchu/kernel-qemu"
 kernel_img[3.10-x86_64]="bzImage x86_64/ranchu/kernel-qemu"
 kernel_img[3.10-x86_64-qemu1]="bzImage x86_64/kernel-qemu"
+# kernel_img[3.4-mips]="vmlinux mips/kernel-qemu"
+# kernel_img[3.10-mips]="vmlinux mips/ranchu/kernel-qemu"
+# kernel_img[3.10-mips64]="vmlinux mips64/kernel-qemu"
 
 printf "Upgrade emulator kernels\n\n" > emu_kernel.commitmsg
 
