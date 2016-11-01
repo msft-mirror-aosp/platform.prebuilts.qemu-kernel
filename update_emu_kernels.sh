@@ -30,6 +30,12 @@ kernel_img[3.10-mips64]="vmlinux mips64/kernel-qemu"
 kernel_img[3.10-x86]="bzImage x86/ranchu/kernel-qemu"
 kernel_img[3.10-x86_64]="bzImage x86_64/ranchu/kernel-qemu"
 kernel_img[3.10-x86_64-qemu1]="bzImage x86_64/kernel-qemu"
+kernel_img[3.18-arm]="zImage arm/3.18/kernel-qemu2"
+kernel_img[3.18-arm64]="Image arm64/3.18/kernel-qemu2"
+kernel_img[3.18-mips]="vmlinux mips/3.18/kernel-qemu2"
+kernel_img[3.18-mips64]="vmlinux mips64/3.18/kernel-qemu2"
+kernel_img[3.18-x86]="bzImage x86/3.18/kernel-qemu2"
+kernel_img[3.18-x86_64]="bzImage x86_64/3.18/kernel-qemu2"
 
 printf "Upgrade emulator kernels\n\n" > emu_kernel.commitmsg
 
@@ -71,6 +77,10 @@ last_3_10_commit=`git log | \
 	sed -rn "s/.*Upgrade 3.10 kernel images to ([a-z0-9]+).*/\1/p" | \
 	head -n 1`
 
+last_3_18_commit=`git log | \
+	sed -rn "s/.*Upgrade 3.18 kernel images to ([a-z0-9]+).*/\1/p" | \
+	head -n 1`
+
 if [ ! -d goldfish_cache ]
 then
 	mkdir goldfish_cache
@@ -90,6 +100,11 @@ git checkout remotes/origin/android-goldfish-3.10
 tot_3_10_commit=`git log --oneline -1 | cut -d' ' -f1`
 printf "\nUpgrade 3.10 kernel images to ${tot_3_10_commit}\n" >> ../emu_kernel.commitmsg
 git log --oneline HEAD...${last_3_10_commit} >> ../emu_kernel.commitmsg
+
+git checkout remotes/origin/android-goldfish-3.18
+tot_3_18_commit=`git log --oneline -1 | cut -d' ' -f1`
+printf "\nUpgrade 3.18 kernel images to ${tot_3_18_commit}\n" >> ../emu_kernel.commitmsg
+git log --oneline HEAD...${last_3_18_commit} >> ../emu_kernel.commitmsg
 
 popd
 
