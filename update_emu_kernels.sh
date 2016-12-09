@@ -13,16 +13,16 @@ then
 	exit 1
 fi
 
-fetchtool='sso_client --location --request_timeout 60 --url'
+fetchtool='sso_client -location -connect_timeout 60 -request_timeout 60 -url'
 build_server='https://android-build-uber.corp.google.com'
 branch_prefix='kernel-n-dev-android-goldfish-'
 
 # kernel_img[branch]="build_server_output local_file_name"
 declare -A kernel_img
 
-kernel_img[3.4-arm]="zImage arm/kernel-qemu-armv7"
-kernel_img[3.4-mips]="vmlinux mips/kernel-qemu"
-kernel_img[3.4-x86]="bzImage x86/kernel-qemu"
+#kernel_img[3.4-arm]="zImage arm/kernel-qemu-armv7"
+#kernel_img[3.4-mips]="vmlinux mips/kernel-qemu"
+#kernel_img[3.4-x86]="bzImage x86/kernel-qemu"
 kernel_img[3.10-arm]="zImage arm/ranchu/kernel-qemu"
 kernel_img[3.10-arm64]="Image arm64/kernel-qemu"
 kernel_img[3.10-mips]="vmlinux mips/ranchu/kernel-qemu"
