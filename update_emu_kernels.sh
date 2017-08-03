@@ -31,12 +31,12 @@ branch_prefix='kernel-n-dev-android-goldfish-'
 # kernel_img[branch]="build_server_output local_file_name"
 declare -A kernel_img
 
-kernel_img[3.10-arm]="zImage arm/ranchu/kernel-qemu"
-kernel_img[3.10-arm64]="Image arm64/kernel-qemu"
+kernel_img[3.10-arm]="zImage arm/3.10/kernel-qemu"
+kernel_img[3.10-arm64]="Image arm64/3.10/kernel-qemu"
 kernel_img[3.10-mips]="vmlinux mips/ranchu/kernel-qemu"
 kernel_img[3.10-mips64]="vmlinux mips64/kernel-qemu"
-kernel_img[3.10-x86]="bzImage x86/ranchu/kernel-qemu"
-kernel_img[3.10-x86_64]="bzImage x86_64/ranchu/kernel-qemu"
+kernel_img[3.10-x86]="bzImage x86/3.10/kernel-qemu"
+kernel_img[3.10-x86_64]="bzImage x86_64/3.10/kernel-qemu"
 kernel_img[3.10-x86_64-qemu1]="bzImage x86_64/kernel-qemu"
 kernel_img[3.18-arm]="zImage arm/3.18/kernel-qemu2"
 kernel_img[3.18-arm64]="Image arm64/3.18/kernel-qemu2"
