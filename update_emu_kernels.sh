@@ -33,8 +33,8 @@ declare -A kernel_img
 
 kernel_img[3.10-arm]="zImage arm/3.10/kernel-qemu"
 kernel_img[3.10-arm64]="Image arm64/3.10/kernel-qemu"
-kernel_img[3.10-mips]="vmlinux mips/ranchu/kernel-qemu"
-kernel_img[3.10-mips64]="vmlinux mips64/kernel-qemu"
+kernel_img[3.10-mips]="vmlinux mips/3.10/kernel-qemu"
+kernel_img[3.10-mips64]="vmlinux mips64/3.10/kernel-qemu"
 kernel_img[3.10-x86]="bzImage x86/3.10/kernel-qemu"
 kernel_img[3.10-x86_64]="bzImage x86_64/3.10/kernel-qemu"
 kernel_img[3.10-x86_64-qemu1]="bzImage x86_64/kernel-qemu"
