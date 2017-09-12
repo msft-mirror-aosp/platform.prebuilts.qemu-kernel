@@ -24,8 +24,9 @@ then
 	exit 1
 fi
 
-fetchtool='sso_client -location -connect_timeout 60 -request_timeout 60 -url'
-build_server='https://android-build-uber.corp.google.com'
+abcmd_lkgb='/google/data/ro/projects/android/ab lkgb --target kernel --branch'
+fetch_artifact='/google/data/ro/projects/android/fetch_artifact --request_timeout_secs 60 --target kernel'
+
 branch_prefix='kernel-n-dev-android-goldfish-'
 
 # kernel_img[branch]="build_server_output local_file_name"
@@ -55,13 +56,10 @@ do
 	fi
 
 	branch=$branch_prefix$key
-	branch_url=$build_server/builds/$branch-linux-kernel
 
 	# Find the latest build by searching for highest build number since
 	# build server doesn't provide the "latest" link.
-	build=`$fetchtool $branch_url | \
-			sed -rn "s/<li><a href=".*">([0-9]+)<\/a><\/li>/\1/p" | \
-			sort -nr | head -n 1`
+	build=`$abcmd_lkgb $branch | cut -d' ' -f3 | head -n 1`
 
 	if $manual_mode
 	then
@@ -75,7 +73,7 @@ do
 	# file_info[1] - kernel image in local tree
 	file_info=(${kernel_img[$key]})
 
-	$fetchtool $branch_url/$build/${file_info[0]} > ${file_info[1]}
+	$fetch_artifact --bid $build ${file_info[0]} ${file_info[1]}
 
 	git add ${file_info[1]}
 
