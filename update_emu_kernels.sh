@@ -2,7 +2,7 @@
 set -e
 
 manual_mode=false
-version=3.10
+version=3.18
 
 while getopts "mv:" opt; do
     case $opt in
@@ -97,7 +97,16 @@ git fetch origin
 git checkout remotes/origin/android-goldfish-$version
 tot_commit=`git log --oneline -1 | cut -d' ' -f1`
 printf "\nUpgrade $version kernel images to ${tot_commit}\n" >> ../emu_kernel.commitmsg
-git log --oneline HEAD...${last_commit} >> ../emu_kernel.commitmsg
+
+line_count=`git log --oneline HEAD...${last_commit} | wc -l`
+if [ "$line_count" -gt "6" ]
+then
+	git log --oneline --no-decorate -3 >> ../emu_kernel.commitmsg
+	echo "..." >> ../emu_kernel.commitmsg
+	git log --oneline --no-decorate HEAD...${last_commit} | tail -n 3 >> ../emu_kernel.commitmsg
+else
+	git log --oneline --no-decorate HEAD...${last_commit} >> ../emu_kernel.commitmsg
+fi
 
 popd
 
