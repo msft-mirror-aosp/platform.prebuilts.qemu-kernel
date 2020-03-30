@@ -1,51 +1,51 @@
 #!/bin/bash
+DEFAULT_BRANCH="aosp_kernel-common-android-5.4"
 
 # Examples:
 # to update
-# * modules only:
-#   ./update_54_kernel.sh --bug 123 --goldfish_bid 6300759
-# * the kernel file only (from common):
-#   ./update_54_kernel.sh --bug 123 --kernel common --common_bid 6299923
-# * modules and the kernel file (from common or goldfish):
-#   ./update_54_kernel.sh --bug 123 --kernel common --goldfish_bid 6300759 --common_bid 6299923
-#   ./update_54_kernel.sh --bug 123 --kernel goldfish --goldfish_bid 6300759 --common_bid 6299923
+# * kernel from common and goldfish modules (recommended):
+#   ./update_54_kernel.sh --bug 123 --bid 6332140
+# * only goldfish modules:
+#   ./update_54_kernel.sh --bug 123 --bid 6332140 --update modules
+# * only kernel (common):
+#   ./update_54_kernel.sh --bug 123 --bid 6332140 --update kernel
 
 set -e
 set -o errexit
 source gbash.sh
 
 DEFINE_int bug 0 "Bug with the reason for the update"
-DEFINE_int goldfish_bid 0 "Build id for goldfish modules"
-DEFINE_string kernel "none" "Choose where you want to fetch the kernel from, (common|goldfish|none)"
-DEFINE_int common_bid 0 "Build id for the kernel binary (common)"
-DEFINE_string goldfish_branch "aosp_kernel-r-goldfish-android-5.4" "'fetch_artifact branch' for goldfish modules"
-DEFINE_string common_branch "aosp_kernel-common-android-5.4" "'fetch_artifact branch' for tke kernel binary"
+DEFINE_int bid 0 "Build id for goldfish modules"
+DEFINE_string update "both" "Select which prebuilts to update, (kernel|modules|both)"
+DEFINE_string kernel "common" "Select which kernel to fetch, (common|goldfish)"
+DEFINE_string branch "${DEFAULT_BRANCH}" "Branch for fetch_artifact"
 
 fetch_arch() {
   scratch_dir="${1}"
-  kernel_bid="${2}"
-  kernel_branch="${3}"
-  goldfish_bid="${4}"
-  goldfish_branch="${5}"
+  branch="${2}"
+  bid="${3}"
+  do_fetch_kernel="${4}"
+  do_fetch_modules="${5}"
   kernel_target="${6}"
   kernel_artifact="${7}"
+  modules_target="${8}"
 
   mkdir "${scratch_dir}"
   pushd "${scratch_dir}"
 
-  if [[ "${kernel_bid}" -ne 0 ]]; then
+  if [[ "${do_fetch_kernel}" -ne 0 ]]; then
     /google/data/ro/projects/android/fetch_artifact \
-      --bid "${kernel_bid}" \
+      --bid "${bid}" \
       --target "${kernel_target}" \
-      --branch "${kernel_branch}" \
+      --branch "${branch}" \
       "${kernel_artifact}"
   fi
 
-  if [[ "${goldfish_bid}" -ne 0 ]]; then
+  if [[ "${do_fetch_modules}" -ne 0 ]]; then
     /google/data/ro/projects/android/fetch_artifact \
-      --bid "${goldfish_bid}" \
-      --target "${kernel_target}" \
-      --branch "${goldfish_branch}" \
+      --bid "${bid}" \
+      --target "${modules_target}" \
+      --branch "${branch}" \
       "*.ko"
   fi
 
@@ -56,7 +56,7 @@ move_artifacts() {
   scratch_dir="${1}"
   dst_dir="${2}"
   kernel_artifact="${3}"
-  goldfish_bid="${4}"
+  do_fetch_modules="${4}"
 
   pushd "${scratch_dir}"
 
@@ -64,7 +64,7 @@ move_artifacts() {
     mv "${kernel_artifact}" "${dst_dir}/kernel-qemu2"
   fi
 
-  if [[ "${goldfish_bid}" -ne 0 ]]; then
+  if [[ "${do_fetch_modules}" -ne 0 ]]; then
     rm -rf "${dst_dir}/ko-new"
     rm -rf "${dst_dir}/ko-old"
     mkdir "${dst_dir}/ko-new"
@@ -77,36 +77,73 @@ move_artifacts() {
   popd
 }
 
+make_git_commit() {
+  x86_dst_dir="${1}"
+  arm_dst_dir="${2}"
+
+  git add "${x86_dst_dir}"
+  git add "${arm_dst_dir}"
+
+  git commit -a -m "$(
+  echo Update kernel prebuilts to ${FLAGS_branch}/${FLAGS_bid}
+  echo
+  echo kernel: ${FLAGS_kernel}
+  echo update: ${FLAGS_update}
+  echo
+  echo Test: TreeHugger
+  echo Bug: ${FLAGS_bug}
+  )"
+
+  git commit --amend -s
+}
+
 main() {
   fail=0
 
   if [[ "${FLAGS_bug}" -eq 0 ]]; then
-    echo Must specify --bug 1>&2
+    echo "Must specify --bug" 1>&2
     fail=1
   fi
 
-  kernel_bid="0"
-  kernel_branch="empty"
-  case "${FLAGS_kernel}" in
-    common)
-      if [[ "${FLAGS_common_bid}" -eq 0 ]]; then
-        echo Must specify --common_bid 1>&2
-        fail=1
-      else
-        kernel_bid=${FLAGS_common_bid}
-        kernel_branch=${FLAGS_common_branch}
-      fi
+  if [[ "${FLAGS_bid}" -eq 0 ]]; then
+    echo "Must specify --bid" 1>&2
+    fail=1
+  fi
+
+  do_fetch_kernel=0
+  do_fetch_modules=0
+  case "${FLAGS_update}" in
+    both)
+      do_fetch_kernel=1
+      do_fetch_modules=1
       ;;
-    goldfish)
-      if [[ "${FLAGS_goldfish_bid}" -eq 0 ]]; then
-        echo Must specify --goldfish_bid 1>&2
-        fail=1
-      else
-        kernel_bid=${FLAGS_goldfish_bid}
-        kernel_branch=${FLAGS_goldfish_branch}
-      fi
+    kernel)
+      do_fetch_kernel=1
+      ;;
+    modules)
+      do_fetch_modules=1
       ;;
     *)
+      echo "Unexpected value for --update, '${FLAGS_update}'" 1>&2
+      fail=1
+      ;;
+  esac
+
+  kernel_target_x86=""
+  kernel_target_aarch=""
+  case "${FLAGS_kernel}" in
+    common)
+      kernel_target_x86="kernel_x86_64"
+      kernel_target_aarch="kernel_aarch64"
+      ;;
+    goldfish)
+      echo "WARNING: goldfish kernel is not recommended"
+      kernel_target_x86="kernel_gf_x86_64"
+      kernel_target_aarch="kernel_gf_aarch64"
+      ;;
+    *)
+      echo "Unexpected value for --kernel, '${FLAGS_kernel}'" 1>&2
+      fail=1
       ;;
   esac
 
@@ -123,43 +160,21 @@ main() {
   arm_scratch_dir="${scratch_dir}/arm"
 
   fetch_arch "${x86_scratch_dir}" \
-    "${kernel_bid}" "${kernel_branch}" \
-    "${FLAGS_goldfish_bid}" "${FLAGS_goldfish_branch}" \
-    "kernel_x86_64" "bzImage"
+    "${FLAGS_branch}" "${FLAGS_bid}" \
+    "${do_fetch_kernel}" ${do_fetch_modules} \
+    "${kernel_target_x86}" "bzImage" \
+    "kernel_gf_x86_64"
 
-#  fetch_arch "${arm_scratch_dir}" \
-#    "${kernel_bid}" "${kernel_branch}" \
-#    "${FLAGS_goldfish_bid}" "${FLAGS_goldfish_branch}" \
-#    "kernel_aarch64" "Image.gz"
+  fetch_arch "${arm_scratch_dir}" \
+    "${FLAGS_branch}" "${FLAGS_bid}" \
+    "${do_fetch_kernel}" ${do_fetch_modules} \
+    "${kernel_target_aarch}" "Image.gz" \
+    "kernel_gf_aarch64"
 
-  move_artifacts "${x86_scratch_dir}" "${x86_dst_dir}" "bzImage" "${FLAGS_goldfish_bid}"
-#  move_artifacts "${arm_scratch_dir}" "${arm_dst_dir}" "Image.gz" "${FLAGS_goldfish_bid}"
+  move_artifacts "${x86_scratch_dir}" "${x86_dst_dir}" "bzImage" "${do_fetch_modules}"
+  move_artifacts "${arm_scratch_dir}" "${arm_dst_dir}" "Image.gz" "${do_fetch_modules}"
 
-  git add "${x86_dst_dir}"
-#  git add "${arm_dst_dir}"
-
-  if [[ "${FLAGS_goldfish_bid}" -ne 0 ]]; then
-    git commit -a -m "$(
-    echo Update kernel modules to ${FLAGS_goldfish_bid}
-    echo
-    echo kernel: ${kernel_branch}/${kernel_bid}
-    echo modules: $FLAGS_goldfish_branch/$FLAGS_goldfish_bid
-    echo
-    echo Test: TreeHugger
-    echo "Bug: ${FLAGS_bug}"
-    )"
-  else
-    git commit -a -m "$(
-    echo Update kernel to ${kernel_bid}
-    echo
-    echo kernel: ${kernel_branch}/${kernel_bid}
-    echo
-    echo Test: TreeHugger
-    echo "Bug: ${FLAGS_bug}"
-    )"
-  fi
-
-  git commit --amend -s
+  make_git_commit "${x86_dst_dir}" "${arm_dst_dir}"
 }
 
 gbash::main "$@"
