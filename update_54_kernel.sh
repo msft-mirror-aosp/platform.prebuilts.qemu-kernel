@@ -1,5 +1,5 @@
 #!/bin/bash
-DEFAULT_BRANCH="aosp_kernel-common-android-5.4-stable"
+DEFAULT_BRANCH="aosp_kernel-common-android-5.4"
 
 # Examples:
 # to update
@@ -85,7 +85,7 @@ make_git_commit() {
   git add "${arm_dst_dir}"
 
   git commit -a -m "$(
-  echo DO NOT MERGE: Update kernel prebuilts to ${FLAGS_branch}/${FLAGS_bid}
+  echo Update kernel prebuilts to ${FLAGS_branch}/${FLAGS_bid}
   echo
   echo kernel: ${FLAGS_kernel}
   echo update: ${FLAGS_update}
