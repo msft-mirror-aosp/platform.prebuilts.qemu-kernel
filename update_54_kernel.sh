@@ -19,6 +19,7 @@ DEFINE_int bid 0 "Build id for goldfish modules"
 DEFINE_string update "both" "Select which prebuilts to update, (kernel|modules|both)"
 DEFINE_string kernel "common" "Select which kernel to fetch, (common|goldfish)"
 DEFINE_string branch "${DEFAULT_BRANCH}" "Branch for fetch_artifact"
+DEFINE_string change_id "" "AOSP/master Change-Id"
 
 fetch_arch() {
   scratch_dir="${1}"
@@ -85,13 +86,15 @@ make_git_commit() {
   git add "${arm_dst_dir}"
 
   git commit -a -m "$(
-  echo DO NOT MERGE: Update kernel prebuilts to ${FLAGS_branch}/${FLAGS_bid}
+  echo Update kernel prebuilts to ${FLAGS_branch}/${FLAGS_bid}
   echo
   echo kernel: ${FLAGS_kernel}
   echo update: ${FLAGS_update}
   echo
   echo Test: TreeHugger
   echo Bug: ${FLAGS_bug}
+  echo Change-Id: ${FLAGS_change_id}
+  echo Merged-In: ${FLAGS_change_id}
   )"
 
   git commit --amend -s
@@ -107,6 +110,11 @@ main() {
 
   if [[ "${FLAGS_bid}" -eq 0 ]]; then
     echo "Must specify --bid" 1>&2
+    fail=1
+  fi
+
+  if [[ -z "${FLAGS_change_id}" ]]; then
+    echo "Must specify --change_id, use Change-Id from your AOSP change" 1>&2
     fail=1
   fi
 
