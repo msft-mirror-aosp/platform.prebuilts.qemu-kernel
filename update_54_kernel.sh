@@ -1,5 +1,5 @@
 #!/bin/bash
-DEFAULT_BRANCH="aosp_kernel-common-android-5.4-stable"
+DEFAULT_BRANCH="aosp_kernel-common-android11-5.4"
 
 # Examples:
 # to update
