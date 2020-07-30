@@ -146,8 +146,12 @@ main() {
   fetch_arch "${arm_scratch_dir}" \
     "${FLAGS_branch}" "${FLAGS_bid}" \
     "${do_fetch_kernel}" "${do_fetch_modules}" \
-    "kernel_aarch64" "Image.gz" \
+    "kernel_aarch64" "Image" \
     "kernel_gf_aarch64"
+
+  if [[ -f "${arm_scratch_dir}/Image" ]]; then
+    gzip -9 "${arm_scratch_dir}/Image"
+  fi
 
   move_artifacts "${x86_scratch_dir}" "${x86_dst_dir}" "bzImage" "${do_fetch_modules}"
   move_artifacts "${arm_scratch_dir}" "${arm_dst_dir}" "Image.gz" "${do_fetch_modules}"
