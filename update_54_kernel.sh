@@ -161,13 +161,13 @@ main() {
 
   fetch_arch "${x86_scratch_dir}" \
     "${FLAGS_branch}" "${FLAGS_bid}" \
-    "${do_fetch_kernel}" ${do_fetch_modules} \
+    "${do_fetch_kernel}" "${do_fetch_modules}" \
     "${kernel_target_x86}" "bzImage" \
     "kernel_gf_x86_64"
 
   fetch_arch "${arm_scratch_dir}" \
     "${FLAGS_branch}" "${FLAGS_bid}" \
-    "${do_fetch_kernel}" ${do_fetch_modules} \
+    "${do_fetch_kernel}" "${do_fetch_modules}" \
     "${kernel_target_aarch}" "Image.gz" \
     "kernel_gf_aarch64"
 
