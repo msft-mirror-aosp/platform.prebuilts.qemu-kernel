@@ -1,13 +1,13 @@
 #!/bin/bash
-DEFAULT_BRANCH="aosp_kernel-common-android-5.4"
+DEFAULT_BRANCH="aosp_kernel-common-android12-5.4"
 
 # Examples:
 # to update
-# * kernel from common and goldfish modules (recommended):
+# * kernel and goldfish modules (recommended):
 #   ./update_54_kernel.sh --bug 123 --bid 6332140
 # * only goldfish modules:
 #   ./update_54_kernel.sh --bug 123 --bid 6332140 --update modules
-# * only kernel (common):
+# * only kernel:
 #   ./update_54_kernel.sh --bug 123 --bid 6332140 --update kernel
 
 set -e
@@ -17,7 +17,6 @@ source gbash.sh
 DEFINE_int bug 0 "Bug with the reason for the update"
 DEFINE_int bid 0 "Build id for goldfish modules"
 DEFINE_string update "both" "Select which prebuilts to update, (kernel|modules|both)"
-DEFINE_string kernel "common" "Select which kernel to fetch, (common|goldfish)"
 DEFINE_string branch "${DEFAULT_BRANCH}" "Branch for fetch_artifact"
 
 fetch_arch() {
@@ -87,9 +86,6 @@ make_git_commit() {
   git commit -a -m "$(
   echo Update kernel prebuilts to ${FLAGS_branch}/${FLAGS_bid}
   echo
-  echo kernel: ${FLAGS_kernel}
-  echo update: ${FLAGS_update}
-  echo
   echo Test: TreeHugger
   echo Bug: ${FLAGS_bug}
   )"
@@ -129,24 +125,6 @@ main() {
       ;;
   esac
 
-  kernel_target_x86=""
-  kernel_target_aarch=""
-  case "${FLAGS_kernel}" in
-    common)
-      kernel_target_x86="kernel_x86_64"
-      kernel_target_aarch="kernel_aarch64"
-      ;;
-    goldfish)
-      echo "WARNING: goldfish kernel is not recommended"
-      kernel_target_x86="kernel_gf_x86_64"
-      kernel_target_aarch="kernel_gf_aarch64"
-      ;;
-    *)
-      echo "Unexpected value for --kernel, '${FLAGS_kernel}'" 1>&2
-      fail=1
-      ;;
-  esac
-
   if [[ "${fail}" -ne 0 ]]; then
     exit "${fail}"
   fi
@@ -161,15 +139,19 @@ main() {
 
   fetch_arch "${x86_scratch_dir}" \
     "${FLAGS_branch}" "${FLAGS_bid}" \
-    "${do_fetch_kernel}" ${do_fetch_modules} \
-    "${kernel_target_x86}" "bzImage" \
+    "${do_fetch_kernel}" "${do_fetch_modules}" \
+    "kernel_x86_64" "bzImage" \
     "kernel_gf_x86_64"
 
   fetch_arch "${arm_scratch_dir}" \
     "${FLAGS_branch}" "${FLAGS_bid}" \
-    "${do_fetch_kernel}" ${do_fetch_modules} \
-    "${kernel_target_aarch}" "Image.gz" \
+    "${do_fetch_kernel}" "${do_fetch_modules}" \
+    "kernel_aarch64" "Image" \
     "kernel_gf_aarch64"
+
+  if [[ -f "${arm_scratch_dir}/Image" ]]; then
+    gzip -9 "${arm_scratch_dir}/Image"
+  fi
 
   move_artifacts "${x86_scratch_dir}" "${x86_dst_dir}" "bzImage" "${do_fetch_modules}"
   move_artifacts "${arm_scratch_dir}" "${arm_dst_dir}" "Image.gz" "${do_fetch_modules}"
