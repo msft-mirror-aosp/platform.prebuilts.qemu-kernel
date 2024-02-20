@@ -1,116 +1,178 @@
 #!/bin/bash
+KERNEL_VERSION="5.15"
+DEFAULT_BRANCH="aosp_kernel-common-android13-${KERNEL_VERSION}"
+
+# Examples:
+# to update
+# * kernel and goldfish modules (recommended):
+#   ./update_emu_kernel.sh --bug 123 --bid 6332140
+# * only goldfish modules:
+#   ./update_emu_kernel.sh --bug 123 --bid 6332140 --update modules
+# * only kernel:
+#   ./update_emu_kernel.sh --bug 123 --bid 6332140 --update kernel
 set -e
+set -o errexit
+source gbash.sh
 
-manual_mode=false
-version=3.18
+DEFINE_int bug 0 "Bug with the reason for the update"
+DEFINE_int bid 0 "Build id for goldfish modules"
+DEFINE_string update "both" "Select which prebuilts to update, (kernel|modules|both)"
+DEFINE_string branch "${DEFAULT_BRANCH}" "Branch for fetch_artifact"
 
-while getopts "mv:" opt; do
-    case $opt in
-	m) manual_mode=true
-	    ;;
-	v) version=$OPTARG
-	   ;;
-	?) echo "Usage: $0 [-m] [-v version]"
-	   echo "   -m: manually specify build numbers"
-	   echo "   -v: specify kernel version [default 3.10]"
-	   exit 1
-	   ;;
-    esac
-done
+fetch_arch() {
+  scratch_dir="${1}"
+  branch="${2}"
+  bid="${3}"
+  do_fetch_kernel="${4}"
+  do_fetch_modules="${5}"
+  kernel_target="${6}"
+  kernel_artifact="${7}"
+  modules_target="${8}"
 
-if [[ "$version" != "3.10" && "$version" != "3.18" ]]
-then
-	echo "kernel version must be 3.10 or 3.18"
-	exit 1
-fi
+  mkdir "${scratch_dir}"
+  pushd "${scratch_dir}"
 
-abcmd_lkgb='/google/data/ro/projects/android/ab lkgb --target kernel --branch'
-fetch_artifact='/google/data/ro/projects/android/fetch_artifact --request_timeout_secs 60 --target kernel'
+  if [[ "${do_fetch_kernel}" -ne 0 ]]; then
+    /google/data/ro/projects/android/fetch_artifact \
+      --bid "${bid}" \
+      --target "${kernel_target}" \
+      "${kernel_artifact}"
+  fi
 
-branch_prefix='kernel-n-dev-android-goldfish-'
+  if [[ "${do_fetch_modules}" -ne 0 ]]; then
+    /google/data/ro/projects/android/fetch_artifact \
+      --bid "${bid}" \
+      --target "${modules_target}" \
+      "*.ko"
+  fi
 
-# kernel_img[branch]="build_server_output local_file_name"
-declare -A kernel_img
+  popd
+}
 
-kernel_img[3.10-arm]="zImage arm/3.10/kernel-qemu"
-kernel_img[3.10-arm64]="Image arm64/3.10/kernel-qemu"
-kernel_img[3.10-mips]="vmlinux mips/3.10/kernel-qemu"
-kernel_img[3.10-mips64]="vmlinux mips64/3.10/kernel-qemu"
-kernel_img[3.10-x86]="bzImage x86/3.10/kernel-qemu"
-kernel_img[3.10-x86_64]="bzImage x86_64/3.10/kernel-qemu"
-kernel_img[3.10-x86_64-qemu1]="bzImage x86_64/kernel-qemu"
-kernel_img[3.18-arm]="zImage arm/3.18/kernel-qemu2"
-kernel_img[3.18-arm64]="Image arm64/3.18/kernel-qemu2"
-kernel_img[3.18-mips]="vmlinux mips/3.18/kernel-qemu2"
-kernel_img[3.18-mips64]="vmlinux mips64/3.18/kernel-qemu2"
-kernel_img[3.18-x86]="bzImage x86/3.18/kernel-qemu2"
-kernel_img[3.18-x86_64]="bzImage x86_64/3.18/kernel-qemu2"
+move_artifacts() {
+  scratch_dir="${1}"
+  dst_dir="${2}"
+  kernel_artifact="${3}"
+  kernel_filename="${4}"
+  do_fetch_modules="${5}"
 
-printf "Upgrade emulator kernels $version\n\n" > emu_kernel.commitmsg
+  pushd "${scratch_dir}"
 
-for key in "${!kernel_img[@]}"
-do
-	if [[ $key != $version* ]]
-	then
-		continue
-	fi
+  if [[ -f "${kernel_artifact}" ]]; then
+    mv "${kernel_artifact}" "${dst_dir}/${kernel_filename}"
+  fi
 
-	branch=$branch_prefix$key
+  if [[ "${do_fetch_modules}" -ne 0 ]]; then
+    rm -rf "${dst_dir}/ko-new"
+    rm -rf "${dst_dir}/ko-old"
+    mkdir "${dst_dir}/ko-new"
+    mv *.ko "${dst_dir}/ko-new"
+    mv "${dst_dir}/ko" "${dst_dir}/ko-old"
+    mv "${dst_dir}/ko-new" "${dst_dir}/ko"
+    rm -rf "${dst_dir}/ko-old"
+  fi
 
-	# Find the latest build by searching for highest build number since
-	# build server doesn't provide the "latest" link.
-	build=`$abcmd_lkgb $branch | cut -d' ' -f3 | head -n 1`
+  popd
+}
 
-	if $manual_mode
-	then
-		read -p "Enter build number for $branch: [$build]" input
-		build="${input:-$build}"
-	fi
+make_git_commit() {
+  x86_dst_dir="${1}"
+  arm_dst_dir="${2}"
+  git add "${x86_dst_dir}"
+  git add "${arm_dst_dir}"
 
-	echo Fetching build $build from branch $branch
+  git commit -a -m "$(
+  echo Update kernel prebuilts to go/ab/${FLAGS_bid}
+  echo
+  echo Test: TreeHugger
+  echo Bug: ${FLAGS_bug}
+  )"
 
-	# file_info[0] - kernel image on build server
-	# file_info[1] - kernel image in local tree
-	file_info=(${kernel_img[$key]})
+  git commit --amend -s
+}
 
-	$fetch_artifact --bid $build ${file_info[0]} ${file_info[1]}
+main() {
+  fail=0
 
-	git add ${file_info[1]}
+  if [[ "${FLAGS_bug}" -eq 0 ]]; then
+    echo "Must specify --bug" 1>&2
+    fail=1
+  fi
 
-	printf "$branch - build: $build\n" >> emu_kernel.commitmsg
-done
+  if [[ "${FLAGS_bid}" -eq 0 ]]; then
+    echo "Must specify --bid" 1>&2
+    fail=1
+  fi
 
-last_commit=`git log | \
-	sed -rn "s/.*Upgrade $version kernel images to ([a-z0-9]+).*/\1/p" | \
-	head -n 1`
+  do_fetch_kernel=0
+  do_fetch_modules=0
+  case "${FLAGS_update}" in
+    both)
+      do_fetch_kernel=1
+      do_fetch_modules=1
+      ;;
+    kernel)
+      do_fetch_kernel=1
+      ;;
+    modules)
+      do_fetch_modules=1
+      ;;
+    *)
+      echo "Unexpected value for --update, '${FLAGS_update}'" 1>&2
+      fail=1
+      ;;
+  esac
 
-if [ ! -d goldfish_cache ]
-then
-	mkdir goldfish_cache
-	git clone https://android.googlesource.com/kernel/goldfish goldfish_cache
-fi
+  if [[ "${fail}" -ne 0 ]]; then
+    exit "${fail}"
+  fi
 
-pushd goldfish_cache
+  here="$(pwd)"
+  x86_dst_dir="${here}/x86_64/${KERNEL_VERSION}"
+  arm_dst_dir="${here}/arm64/${KERNEL_VERSION}"
 
-git fetch origin
+  if [[ ! -d "${x86_dst_dir}" ]]; then
+    mkdir "${x86_dst_dir}"
+  fi
+  if [[ ! -d "${x86_dst_dir}/ko" ]]; then
+    mkdir "${x86_dst_dir}/ko"
+  fi
+  if [[ ! -d "${arm_dst_dir}" ]]; then
+    mkdir "${arm_dst_dir}"
+  fi
+  if [[ ! -d "${arm_dst_dir}/ko" ]]; then
+    mkdir "${arm_dst_dir}/ko"
+  fi
 
-git checkout remotes/origin/android-goldfish-$version
-tot_commit=`git log --oneline -1 | cut -d' ' -f1`
-printf "\nUpgrade $version kernel images to ${tot_commit}\n" >> ../emu_kernel.commitmsg
+  scratch_dir="$(mktemp -d)"
+  x86_scratch_dir="${scratch_dir}/x86"
+  arm_scratch_dir="${scratch_dir}/arm"
 
-line_count=`git log --oneline HEAD...${last_commit} | wc -l`
-if [ "$line_count" -gt "6" ]
-then
-	git log --oneline --no-decorate -3 >> ../emu_kernel.commitmsg
-	echo "..." >> ../emu_kernel.commitmsg
-	git log --oneline --no-decorate HEAD...${last_commit} | tail -n 3 >> ../emu_kernel.commitmsg
-else
-	git log --oneline --no-decorate HEAD...${last_commit} >> ../emu_kernel.commitmsg
-fi
+  fetch_arch "${x86_scratch_dir}" \
+    "${FLAGS_branch}" "${FLAGS_bid}" \
+    "${do_fetch_kernel}" "${do_fetch_modules}" \
+    "kernel_x86_64" "bzImage" \
+    "kernel_virt_x86_64"
 
-popd
+  fetch_arch "${arm_scratch_dir}" \
+    "${FLAGS_branch}" "${FLAGS_bid}" \
+    "${do_fetch_kernel}" "${do_fetch_modules}" \
+    "kernel_aarch64" "Image" \
+    "kernel_virt_aarch64"
 
-git commit -t emu_kernel.commitmsg
+  if [[ -f "${arm_scratch_dir}/Image" ]]; then
+    gzip -9 "${arm_scratch_dir}/Image"
+  fi
 
-rm emu_kernel.commitmsg
+  move_artifacts "${x86_scratch_dir}" "${x86_dst_dir}" \
+    "bzImage" "kernel-${KERNEL_VERSION}" \
+    "${do_fetch_modules}"
 
+  move_artifacts "${arm_scratch_dir}" "${arm_dst_dir}" \
+    "Image.gz" "kernel-${KERNEL_VERSION}-gz" \
+    "${do_fetch_modules}"
+
+  make_git_commit "${x86_dst_dir}" "${arm_dst_dir}"
+}
+
+gbash::main "$@"
