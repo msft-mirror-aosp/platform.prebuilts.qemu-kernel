@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KERNEL_VERSION="6.6"
+KERNEL_VERSION="6.12"
 
 # ./update_emu_kernel.sh --bug 123 --bid 123456
 
